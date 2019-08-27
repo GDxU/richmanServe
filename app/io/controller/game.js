@@ -381,13 +381,14 @@ module.exports = class extends Controller {
                             nsp.emit(message.roomId + '-gameOver', {
                                 _id: userInfo._id
                             })
+                        }else {
+                            await app.redis.hmset(message.roomId, {
+                                players: JSON.stringify(players),
+                                currentRound: roomInfo.currentRound,
+                                aliveNum: roomInfo.aliveNum
+                            });
                         }
-
-                        await app.redis.hmset(message.roomId, {
-                            players: JSON.stringify(players),
-                            currentRound: roomInfo.currentRound,
-                            aliveNum: roomInfo.aliveNum
-                        });
+                        
                         // 广播点数和目的地区信息
                         nsp.emit(message.roomId + '-throwDiceBack', result)
                     } else {
@@ -574,7 +575,7 @@ async function countDown(countDown, orderId, userId, roomId, nextPlayer, afterRo
             })
             countDown -= 1;
 
-            if (countDown < 0) {
+            if (countDown < 0 && await app.redis.exists(roomId)) {
                 clearInterval(timer);
                 app.redis.hmset(roomId, {
                     currentRound: afterRound
